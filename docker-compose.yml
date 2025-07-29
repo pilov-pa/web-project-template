@@ -1,0 +1,62 @@
+services:
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./docker/nginx:/etc/nginx/conf.d
+      - ./backend:/var/www
+    environment:
+      - VIRTUAL_HOST=api.dev.{project}
+      - VIRTUAL_PORT=80
+    depends_on:
+      - php
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ./frontend:/var/www
+    environment:
+      - VIRTUAL_HOST=dev.{project}
+      - VIRTUAL_PORT=3000
+
+  php:
+    build:
+      context: ./backend
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ./backend:/var/www
+    environment:
+      - PHP_IDE_CONFIG=serverName=dev.{project}
+
+  pgsql:
+    image: postgres:16-alpine
+    ports:
+      - '5430:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=app
+      - POSTGRES_USER=parsers
+      - POSTGRES_PASSWORD=parsers
+
+  logstash:
+    image: logstash:8.12.2
+    volumes:
+      - ./docker/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+
+  kibana:
+    image: kibana:8.12.2
+    environment:
+      - VIRTUAL_HOST=kibana.{project}
+      - VIRTUAL_PORT=5601
+
+  elasticsearch:
+    image: elasticsearch:8.12.2
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xmx512m -Xms512m
+      - xpack.security.enabled=false
+
+volumes:
+  postgres_data:
