@@ -31,3 +31,6 @@ cs:
 	docker compose exec php php vendor/bin/phpcs --standard=phpcs.xml -n -p -s --parallel=32
 csfix:
 	docker compose exec php php vendor/bin/phpcbf --standard=phpcs.xml -n -p -s --parallel=32
+
+init-project:
+	@bash .tools/init-project.sh

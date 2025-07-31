@@ -13,17 +13,28 @@ services:
   frontend:
     build:
       context: frontend
-      dockerfile: docker/Dockerfile
+      dockerfile: ../docker/frontend/Dockerfile
     volumes:
       - ./frontend:/var/www
     environment:
       - VIRTUAL_HOST=dev.{project}
       - VIRTUAL_PORT=3000
+    command: >
+      sh -c '
+        if [ -f frontend/package.json ]; then
+          cd frontend
+          [ -d node_modules ] || yarn
+          yarn dev --host
+        else
+          echo "⚠️ Нет frontend/package.json — контейнер запущен в фоне. Создай проект вручную.";
+          sleep infinity
+        fi
+      '
 
   php:
     build:
       context: ./backend
-      dockerfile: docker/Dockerfile
+      dockerfile: ../docker/php/Dockerfile
     volumes:
       - ./backend:/var/www
     environment:
@@ -43,7 +54,7 @@ services:
   logstash:
     image: logstash:8.12.2
     volumes:
-      - ./docker/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./docker/logstash/logstash.conf:/usr/share/logstash/logstash.conf
 
   kibana:
     image: kibana:8.12.2
