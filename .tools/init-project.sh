@@ -67,21 +67,21 @@ docker compose exec -u root php bash -lc "
   composer require --dev symfony/maker-bundle --no-interaction
   shopt -s dotglob
   cp -an * /var/www/
-  chown -R www-data:www-data /var/www/html || true
+  chown -R www-data:www-data /var/www || true
   echo '>> Symfony скопирован.'
 "
 
-if [ -d frontend ] || [ -f package.json ]; then
+if [ -f package.json ]; then
   echo "⚠️ React-проект уже создан. Пропускаю создание."
 else
   echo "⚛️ Создаю React-приложение в frontend-контейнере..."
-  docker compose run --rm frontend sh -lc '
-    TMPDIR=".vite-tmp"
-    npm create vite@latest "$TMPDIR" -- --template react-ts --no-install
-    cp -an "$TMPDIR"/* ./
-    rm -rf "$TMPDIR"
-    yarn install
-
+  rm -rf ./frontend/*
+  docker compose exec -u root frontend sh -lc '
+    pwd
+    ls -la
+    npx --yes create-vite@latest ./ --template react-ts
+    pwd
+    ls -la
     echo "🌸 Устанавливаю TailwindCSS..."
     yarn add -D tailwindcss postcss autoprefixer
     npx tailwindcss init -p
@@ -90,13 +90,28 @@ else
     echo "module.exports = { content: [\"./index.html\", \"./src/**/*.{js,ts,jsx,tsx}\"], theme: { extend: {}, }, plugins: [], };" >> tailwind.config.js
 
     echo "@tailwind base;\n@tailwind components;\n@tailwind utilities;" > src/index.css
-
-    sed -i \"s#'./App.css'#'./index.css'#\" src/main.tsx || true
   '
 fi
 
 echo "🌐 Прописываю BACKEND_URL в frontend/.env"
 echo "REACT_APP_BACKEND_URL=http://api.dev.$PROJECT" > frontend/.env
+
+echo "🔧 Добавляю server.allowedHosts в vite.config.ts..."
+
+if [ -f frontend/vite.config.ts ]; then
+  awk -v host="dev.$PROJECT" '
+    BEGIN { patched = 0 }
+    /defineConfig\(\{/ && !patched {
+      print
+      print "  server: {"
+      print "    allowedHosts: [\"" host "\"],"
+      print "  },"
+      patched = 1
+      next
+    }
+    { print }
+  ' frontend/vite.config.ts > frontend/vite.config.ts.tmp && mv frontend/vite.config.ts.tmp frontend/vite.config.ts
+fi
 
 add_host_entry "dev.$PROJECT"
 add_host_entry "api.dev.$PROJECT"

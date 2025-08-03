@@ -9,6 +9,8 @@ services:
       - VIRTUAL_PORT=80
     depends_on:
       - php
+    networks:
+      - nginx-proxy
 
   frontend:
     build:
@@ -18,15 +20,16 @@ services:
       - ./frontend:/var/www
     environment:
       - VIRTUAL_HOST=dev.{project}
-      - VIRTUAL_PORT=3000
+      - VIRTUAL_PORT=5173
+    networks:
+      - nginx-proxy
     command: >
       sh -c '
-        if [ -f frontend/package.json ]; then
-          cd frontend
+        if [ -f package.json ]; then
           [ -d node_modules ] || yarn
           yarn dev --host
         else
-          echo "⚠️ Нет frontend/package.json — контейнер запущен в фоне. Создай проект вручную.";
+          echo "⚠️ Нет package.json — контейнер запущен в фоне. Создай проект вручную.";
           sleep infinity
         fi
       '
@@ -39,6 +42,8 @@ services:
       - ./backend:/var/www
     environment:
       - PHP_IDE_CONFIG=serverName=dev.{project}
+    networks:
+      - nginx-proxy
 
   pgsql:
     image: postgres:16-alpine
@@ -50,17 +55,23 @@ services:
       - POSTGRES_DB=app
       - POSTGRES_USER=parsers
       - POSTGRES_PASSWORD=parsers
+    networks:
+      - nginx-proxy
 
   logstash:
     image: logstash:8.12.2
     volumes:
       - ./docker/logstash/logstash.conf:/usr/share/logstash/logstash.conf
+    networks:
+      - nginx-proxy
 
   kibana:
     image: kibana:8.12.2
     environment:
       - VIRTUAL_HOST=kibana.{project}
       - VIRTUAL_PORT=5601
+    networks:
+      - nginx-proxy
 
   elasticsearch:
     image: elasticsearch:8.12.2
@@ -68,6 +79,12 @@ services:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xmx512m -Xms512m
       - xpack.security.enabled=false
+    networks:
+      - nginx-proxy
 
 volumes:
   postgres_data:
+
+networks:
+  nginx-proxy:
+    external: true

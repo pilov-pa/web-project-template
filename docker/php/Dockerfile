@@ -53,7 +53,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
 # Рабочая директория
-WORKDIR /var/www/html
+WORKDIR /var/www
 
 # Права: маппим www-data под пользователя хоста
 ARG PUID=1000
@@ -94,7 +94,7 @@ RUN apt-get purge -y --auto-remove $PHPIZE_DEPS clang \
 USER www-data
 
 # Копируем проект (если он уже есть при сборке)
-COPY --chown=www-data:www-data . /var/www/html
+COPY --chown=www-data:www-data . /var/www
 
 # Ставим зависимости без dev (если есть composer.json)
 RUN if [ -f composer.json ]; then \
